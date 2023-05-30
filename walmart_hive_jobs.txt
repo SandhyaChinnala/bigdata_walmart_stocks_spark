@@ -1,0 +1,82 @@
+hive> create database walmart;
+OK
+Time taken: 1.041 seconds
+hive> use walmart;
+OK
+Time taken: 0.075 seconds
+
+
+create table walmart_stocks(date string, open double, high double, low double,close double, volume bigint, adj_close double)row format delimited fields terminated by ',' TBLPROPERTIES("skip.header.line.count"="1");
+ 
+load data inpath 'milesdata/walmart_stock.csv' into table walmart_stocks;
+
+
+US1:
+# What day had the Peak High in Price?
+select date, max(high) as Peak_High from walmart_stocks group by date order by Peak_High desc limit 1;
+
+Total MapReduce CPU Time Spent: 4 seconds 360 msec
+OK
+2015-01-13	90.970001
+Time taken: 50.07 seconds, Fetched: 1 row(s)
+
+
+External Table:
+
+create external table walmart(date string, peak_high float)row format delimited fields terminated by ',' location '/user/hive/warehouse/walmart1/us1.txt' ;
+
+insert overwrite table walmart select date, max(high) as Peak_High from walmart_stocks group by date order by Peak_High desc limit 1;
+
+mysql:
+
+use ecommerce;
+
+create table walmartS(date varchar(20), peak_high float);
+
+Sqoop Export:
+sqoop export --connect jdbc:mysql://localhost:3306/ecommerce --username root --password cloudera --table walmartS --export-dir /user/hive/warehouse/walmart1/us1.txt --input-fields-terminated-by ','
+
+
+mysql> select * from walmartS;
++------------+-----------+
+| date       | peak_high |
++------------+-----------+
+| 2015-01-13 |     90.97 |
++------------+-----------+
+1 row in set (0.00 sec)
+
+
+
+#US2
+# What is the mean of the Close column?
+
+select avg(Close) as Avg_Close from walmart_stocks;
+
+Total MapReduce CPU Time Spent: 1 seconds 700 msec
+OK
+72.38844998012726
+Time taken: 21.705 seconds, Fetched: 1 row(s)
+
+
+External Table:
+create external table avg_close(close_mean double)row format delimited fields terminated by ',' location '/user/hive/warehouse/walmart1/us2.txt' ;
+
+insert overwrite table avg_close select avg(Close) as Avg_Close from walmart_stocks;
+
+mysql:
+
+use ecommerce;
+
+create table mean_close(avg_close double);
+
+Sqoop Export:
+sqoop export --connect jdbc:mysql://localhost:3306/ecommerce --username root --password cloudera --table mean_close --export-dir /user/hive/warehouse/walmart1/us2.txt --input-fields-terminated-by ','
+
+mysql> select * from mean_close;
++------------------+
+| avg_close        |
++------------------+
+| 72.3884499801273 |
++------------------+
+1 row in set (0.00 sec)
+
